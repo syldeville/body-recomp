@@ -17,13 +17,14 @@
     --bg: #f2f2f7; --card: #fff; --fill: rgba(118,118,128,.12); --line: rgba(60,60,67,.16);
     --ink: #000; --ink2: rgba(60,60,67,.62); --bar: rgba(242,242,247,.86);
     --accent: #d63d20; --accent-text: #d63d20; --accent-soft: rgba(214,61,32,.08);
+    --warn: #a15c00; --warn-soft: rgba(255,159,10,.14);
     --good: #248a3d; --good-text: #248a3d; --good-soft: rgba(52,199,89,.16);
     --shadow: 0 1px 2px rgba(60,40,30,.04), 0 8px 24px rgba(60,40,30,.06);
   }
   @media (prefers-color-scheme: dark) {
     :root { --bg: #000; --card: #1c1c1e; --fill: rgba(118,118,128,.24); --line: rgba(84,84,88,.6);
             --ink: #fff; --ink2: rgba(235,235,245,.6); --bar: rgba(18,18,20,.86);
-            --accent-text: #ff7a5c; --accent-soft: rgba(255,122,92,.14); --good-text: #30d158; --good-soft: rgba(48,209,88,.2); --shadow: none; }
+            --accent-text: #ff7a5c; --accent-soft: rgba(255,122,92,.14); --warn: #ffb340; --warn-soft: rgba(255,159,10,.16); --good-text: #30d158; --good-soft: rgba(48,209,88,.2); --shadow: none; }
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html { background: var(--bg); }
@@ -84,6 +85,30 @@
   .group + .group { margin-top: 12px; }
   .wk-head { display: flex; justify-content: space-between; }
   .wk-head .goal { color: var(--good-text); }
+  .warn { display: flex; gap: 12px; padding: 16px; border-radius: 16px; background: var(--warn-soft); color: var(--warn); }
+  .warn b { font-weight: 600; }
+  .warn p { margin-top: 4px; font-size: 13px; color: var(--ink2); }
+  .reminder { margin-top: 12px; }
+  .reminder svg { color: var(--ink2); }
+  .reminder .due { font-weight: 600; color: var(--accent-text); }
+  .actions { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-top: 16px; }
+  .secondary { min-height: 52px; border-radius: 14px; background: var(--accent-soft); color: var(--accent-text); font-weight: 600; }
+  button:disabled { opacity: .4; cursor: default; }
+  .check { display: block; width: 100%; padding: 8px; }
+  .pair, .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .pair img, .cmp img, .ph { display: block; width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 12px; background: var(--fill); }
+  .ph { display: grid; place-content: center; justify-items: center; gap: 8px; padding: 8px; font-size: 13px; color: var(--ink2); text-align: center; }
+  .ph.add { border: 2px dashed var(--line); color: var(--accent-text); font-weight: 600; }
+  .slot { position: relative; display: block; width: 100%; }
+  .slot .cap { position: absolute; left: 8px; bottom: 8px; padding: 4px 8px; border-radius: 8px; background: rgba(0,0,0,.55); color: #fff; font-size: 13px; }
+  .back { display: flex; align-items: center; gap: 4px; margin-left: -8px; }
+  input[type=date] { display: block; width: 100%; height: 44px; padding: 0 12px; font: inherit; border: 0; border-radius: 10px; background: var(--card); color: var(--ink); -webkit-appearance: none; }
+  .seg { display: flex; padding: 2px; border-radius: 10px; background: var(--fill); }
+  .seg button { flex: 1; min-height: 40px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--ink2); }
+  .seg button[aria-pressed=true] { background: var(--card); color: var(--ink); box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+  .cmp { margin-top: 16px; }
+  .cmp select { display: block; width: 100%; height: 44px; margin-bottom: 8px; font: inherit; font-weight: 600; text-align: center; text-align-last: center;
+                border: 0; border-radius: 10px; background: var(--card); color: var(--ink); -webkit-appearance: none; }
   .pill.good { background: var(--good-soft); color: var(--good-text); }
 
   /* iOS grouped list */
@@ -197,11 +222,13 @@
   <nav id="tabs" hidden>
     <button data-tab="home" onclick="setTab('home')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>Home</button>
     <button data-tab="calendar" onclick="setTab('calendar')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Calendar</button>
+    <button data-tab="progress" onclick="setTab('progress')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5a2 2 0 0 1 2-2h2.5L9 4.5h6l1.5 2H19a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/></svg>Progress</button>
     <button data-tab="settings" onclick="setTab('settings')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>Settings</button>
   </nav>
 </div>
 <div id="toast" role="status"></div>
 <input type="file" id="importFile" accept="application/json,.json" hidden>
+<input type="file" id="photoFile" accept="image/*" hidden onchange="pickedPhoto()">
 <script>
 // LOGIC START — pure functions, checked by check.js
 // [id, name, sets, repLow, repHigh, restSec, cue, unit]
@@ -295,6 +322,8 @@ const ICON = {
   chev: '<svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>',
   left: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>',
   right: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>',
+  camera: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5a2 2 0 0 1 2-2h2.5L9 4.5h6l1.5 2H19a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/></svg>',
+  warn: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5L2.5 20h19z"/><path d="M12 10v4.5M12 17.5v.01"/></svg>',
   up: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg>',
 };
 const $ = id => document.getElementById(id);
@@ -329,17 +358,17 @@ const volume = s => Object.entries(s.sets).reduce((v, [id, sets]) => v + (EX[id]
 const loggedOn = d => log.map((s, i) => [s, i]).filter(([s]) => s.date === d);
 
 let plan = load('plan', {}); // { 'YYYY-MM-DD': 'A' } for scheduled days
-for (const d in plan) if (d < today() || !(plan[d] in PROGRAM)) delete plan[d];
+for (const d in plan) if (d < today() || !Object.hasOwn(PROGRAM, plan[d])) delete plan[d];
 let sel = today(), month = sel.slice(0, 7), tab = 'home';
 const suggested = () => plan[today()] ?? nextDay(log);
 
 function render() {
-  app.innerHTML = { home, calendar: calendarTab, settings }[tab]();
+  app.innerHTML = { home, calendar: calendarTab, progress: progressTab, settings }[tab]();
   cta.innerHTML = '';
   $('tabs').hidden = false;
   document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-current', b.dataset.tab === tab ? 'page' : 'false'));
 }
-function setTab(t) { tab = t; if (t === 'calendar') sel = today(), month = sel.slice(0, 7); render(); scrollTo(0, 0); }
+function setTab(t) { tab = t; pv = 'list'; if (t === 'calendar') sel = today(), month = sel.slice(0, 7); render(); scrollTo(0, 0); }
 
 function home() {
   const t = today(), week = log.filter(s => s.date >= monday(t)).length, doneToday = loggedOn(t).at(-1);
@@ -394,7 +423,7 @@ function settings() {
       <button class="li link" onclick="exportLog()">Export backup</button>
       <button class="li link" onclick="importFile.click()">Import backup</button>
     </div>
-    <p class="note">${log.length} workouts saved. They live only on this phone, so export now and then so you don't lose them.</p>
+    <p class="note">${log.length} workout${log.length === 1 ? "" : "s"} and ${checks.length} photo check-in${checks.length === 1 ? "" : "s"} saved. They live only on this phone, so export now and then so you don't lose them. The backup includes your photos.</p>
     <h3>How this works</h3>
     <div class="group">
       <ul class="rules">
@@ -465,6 +494,126 @@ function weeks() {
       </details>`).join('')}</div>`;
   }).join('');
 }
+
+// Progress photos. Check-ins are { date, front: Blob|null, side: Blob|null } in IndexedDB,
+// since photos are far too big for localStorage. They never leave the phone except in an export.
+const dbp = new Promise((res, rej) => {
+  const r = indexedDB.open('recomp', 1);
+  r.onupgradeneeded = () => r.result.createObjectStore('checkins', { keyPath: 'date' });
+  r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+});
+async function idb(mode, fn) {
+  const tx = (await dbp).transaction('checkins', mode), req = fn(tx.objectStore('checkins'));
+  return new Promise((res, rej) => { tx.oncomplete = () => res(req?.result); tx.onerror = () => rej(tx.error); });
+}
+let checks = []; // oldest first
+async function loadChecks() {
+  try { checks = (await idb('readonly', s => s.getAll())).sort((a, b) => a.date.localeCompare(b.date)); }
+  catch { toast("Photos can't be saved in this browser mode"); }
+  if (tab === 'progress') render();
+}
+// ponytail: object URLs are never revoked; a few dozen photos per session is fine.
+const urls = new Map();
+const src = b => { if (!urls.has(b)) urls.set(b, URL.createObjectURL(b)); return urls.get(b); };
+const photo = (b, label) => b ? `<img src="${src(b)}" alt="${label}">` : `<div class="ph">No ${label.toLowerCase()} photo</div>`;
+const daysBetween = (a, b) => Math.round((new Date(b + 'T00:00') - new Date(a + 'T00:00')) / 864e5);
+const EVERY = 28; // days between check-ins: weekly photos change too little to see
+
+// Phone photos are 3–5 MB; 1600px JPEG keeps detail for comparing at a tenth of the size.
+async function shrink(file) {
+  const img = new Image(); img.src = URL.createObjectURL(file); await img.decode();
+  const k = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+  const c = Object.assign(document.createElement('canvas'), { width: Math.round(img.naturalWidth * k), height: Math.round(img.naturalHeight * k) });
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  URL.revokeObjectURL(img.src);
+  return new Promise(r => c.toBlob(r, 'image/jpeg', 0.85));
+}
+
+const WARN = `<div class="warn">${ICON.warn}<div><b>Same time, same place</b>
+  <p>Take your photos at the same time of day, in the same spot, with the same lighting and clothes every time. Otherwise light and water changes hide your real progress.</p></div></div>`;
+let pv = 'list', edit = null, cmp = { a: null, b: null, side: 'front' };
+const back = `<button class="link back" onclick="pv = 'list'; render(); scrollTo(0, 0)">${ICON.left}Progress</button>`;
+
+function progressTab() {
+  if (pv === 'edit') return editView();
+  if (pv === 'compare' && checks.length > 1) return compareView();
+  const t = today(), last = checks.at(-1), first = checks[0];
+  const due = last && EVERY - daysBetween(last.date, t);
+  const reminder = !last ? 'Take your first photos to set a baseline.'
+    : due > 0 ? `Next check-in in ${due} day${due > 1 ? 's' : ''} · ${nice(addDays(last.date, EVERY), { weekday: 'short', month: 'short', day: 'numeric' })}`
+    : `<b class="due">Check-in due${due < 0 ? ` · ${-due} day${due < -1 ? 's' : ''} overdue` : ' today'}</b>`;
+  return `
+    <div class="top"><h1>Progress</h1></div>
+    ${WARN}
+    <div class="group reminder"><div class="li">${ICON.camera}<span class="grow">${reminder}</span></div></div>
+    <div class="actions">
+      <button class="primary" onclick="newCheck()">Add check-in</button>
+      <button class="secondary" onclick="openCompare()" ${checks.length < 2 ? 'disabled' : ''}>Compare</button>
+    </div>
+    ${checks.length < 2 ? `<p class="note">${checks.length ? 'Add a second check-in to compare.' : ''}</p>` : ''}
+    ${checks.length ? checks.slice().reverse().map(c => `
+      <h3>${nice(c.date, { month: 'long', day: 'numeric', year: 'numeric' })}${c !== first ? ` · week ${Math.floor(daysBetween(first.date, c.date) / 7)}` : ' · start'}</h3>
+      <button class="group check" onclick="editCheck('${c.date}')" aria-label="Edit check-in ${c.date}">
+        <div class="pair">${photo(c.front, 'Front')}${photo(c.side, 'Side')}</div>
+      </button>`).join('')
+    : `<div class="card empty" style="margin-top:24px"><p>No photos yet</p><p class="sub">Add a front and side photo today. In a few weeks you'll be glad you did.</p></div>`}`;
+}
+
+function newCheck() { edit = { date: today(), front: null, side: null, isNew: true }; pv = 'edit'; render(); scrollTo(0, 0); }
+function editCheck(d) { edit = { ...checks.find(c => c.date === d), isNew: false }; pv = 'edit'; render(); scrollTo(0, 0); }
+function editView() {
+  const slot = (k, label) => `<button class="slot" onclick="photoFile.dataset.k = '${k}'; photoFile.click()" aria-label="${edit[k] ? 'Replace' : 'Add'} ${label.toLowerCase()} photo">
+    ${edit[k] ? `<img src="${src(edit[k])}" alt="${label}"><span class="cap">${label} · tap to replace</span>` : `<div class="ph add">${ICON.camera}<span>Add ${label.toLowerCase()} photo</span></div>`}</button>`;
+  return `
+    <div class="top">${back}<h1>${edit.isNew ? 'New check-in' : nice(edit.date, { month: 'long', day: 'numeric', year: 'numeric' })}</h1></div>
+    ${edit.isNew ? `<h3>Date</h3><input type="date" value="${edit.date}" max="${today()}" onchange="edit.date = this.value || today()" aria-label="Check-in date">` : ''}
+    <h3>Photos</h3>
+    <div class="pair edit">${slot('front', 'Front')}${slot('side', 'Side')}</div>
+    <p class="note">⚠ Same time of day, same spot, same lighting as last time.</p>
+    <button class="primary" style="margin-top:24px" onclick="saveCheck()" ${edit.front || edit.side ? '' : 'disabled'}>Save check-in</button>
+    ${edit.isNew ? '' : `<button class="link danger" style="margin-top:8px" onclick="deleteCheck()">Delete check-in</button>`}`;
+}
+async function pickedPhoto() {
+  const f = photoFile.files[0], k = photoFile.dataset.k; photoFile.value = '';
+  if (!f || !edit) return;
+  try { edit[k] = await shrink(f); } catch { return toast("Couldn't read that photo"); }
+  render();
+}
+async function saveCheck() {
+  const { date, front, side, isNew } = edit;
+  if (isNew && checks.some(c => c.date === date) && !confirm(`Replace the ${nice(date)} check-in?`)) return;
+  try { await idb('readwrite', s => s.put({ date, front, side })); } catch { return toast("Couldn't save. Is storage full?"); }
+  navigator.storage?.persist?.(); // ask iOS not to clear photos when space runs low
+  pv = 'list'; edit = null; await loadChecks(); render(); scrollTo(0, 0); toast('Check-in saved');
+}
+async function deleteCheck() {
+  if (!confirm(`Delete the ${nice(edit.date)} photos? This can't be undone.`)) return;
+  await idb('readwrite', s => s.delete(edit.date));
+  pv = 'list'; edit = null; await loadChecks(); render();
+}
+
+function openCompare() {
+  const has = d => checks.some(c => c.date === d);
+  if (!has(cmp.a)) cmp.a = checks[0].date;
+  if (!has(cmp.b)) cmp.b = checks.at(-1).date;
+  pv = 'compare'; render(); scrollTo(0, 0);
+}
+function compareView() {
+  const pick = k => `<select onchange="cmp.${k} = this.value; render()" aria-label="${k === 'a' ? 'Before' : 'After'} date">${checks.map(c =>
+    `<option value="${c.date}" ${c.date === cmp[k] ? 'selected' : ''}>${nice(c.date, { month: 'short', day: 'numeric', year: '2-digit' })}</option>`).join('')}</select>`;
+  const at = d => checks.find(c => c.date === d), label = cmp.side === 'front' ? 'Front' : 'Side';
+  const gap = Math.abs(daysBetween(cmp.a, cmp.b));
+  return `
+    <div class="top">${back}<h1>Compare</h1></div>
+    <div class="seg" role="group" aria-label="Photo angle">${['front', 'side'].map(k =>
+      `<button aria-pressed="${cmp.side === k}" onclick="cmp.side = '${k}'; render()">${k === 'front' ? 'Front' : 'Side'}</button>`).join('')}</div>
+    <div class="cmp">
+      <div>${pick('a')}${photo(at(cmp.a)[cmp.side], label)}</div>
+      <div>${pick('b')}${photo(at(cmp.b)[cmp.side], label)}</div>
+    </div>
+    <p class="note" style="text-align:center">${gap ? `${gap >= 14 ? `${Math.round(gap / 7)} weeks` : `${gap} day${gap > 1 ? 's' : ''}`} apart` : 'Same check-in on both sides'}</p>`;
+}
+const toDataURL = b => b && new Promise(r => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); });
 
 function start(day) {
   const draft = load('draft', null);
@@ -660,7 +809,8 @@ function del(i) {
 }
 
 async function exportLog() {
-  const file = new File([JSON.stringify(log, null, 1)], `recomp-backup-${today()}.json`, { type: 'application/json' });
+  const photos = await Promise.all(checks.map(async c => ({ date: c.date, front: await toDataURL(c.front), side: await toDataURL(c.side) })));
+  const file = new File([JSON.stringify({ log, plan, photos })], `recomp-backup-${today()}.json`, { type: 'application/json' });
   if (navigator.canShare?.({ files: [file] })) return navigator.share({ files: [file] }).catch(() => {});
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(file), download: file.name });
   a.click();
@@ -671,13 +821,25 @@ importFile.addEventListener('change', async () => {
   if (!f) return;
   let data;
   try { data = JSON.parse(await f.text()); } catch { return toast('That file is not valid JSON'); }
-  if (!validLog(data)) return toast('That file is not a Recomp backup');
-  if (confirm(`Replace your ${log.length} logged sessions with ${data.length} from the backup?`)) {
-    log = data; save('log', log); render(); toast('Backup restored');
+  const newLog = Array.isArray(data) ? data : data?.log; // older backups are just the log array
+  if (!validLog(newLog)) return toast('That file is not a Recomp backup');
+  const isPic = x => x == null || (typeof x === 'string' && x.startsWith('data:image/'));
+  const photos = Array.isArray(data.photos) ? data.photos.filter(p => p && typeof p.date === 'string' && isPic(p.front) && isPic(p.side)) : null;
+  const what = (n, m) => `${n} sessions${photos ? ` and ${m} photo check-ins` : ''}`;
+  if (!confirm(`Replace your ${what(log.length, checks.length)} with ${what(newLog.length, photos?.length)} from the backup?`)) return;
+  log = newLog; save('log', log);
+  if (data.plan && typeof data.plan === 'object') { plan = Object.fromEntries(Object.entries(data.plan).filter(([, k]) => Object.hasOwn(PROGRAM, k))); save('plan', plan); }
+  if (photos) {
+    const blob = u => u && fetch(u).then(r => r.blob());
+    const recs = await Promise.all(photos.map(async p => ({ date: p.date, front: await blob(p.front), side: await blob(p.side) })));
+    try { await idb('readwrite', st => { st.clear(); recs.forEach(r => st.put(r)); }); } catch { toast("Workouts restored, but photos couldn't be saved"); }
+    await loadChecks();
   }
+  render(); toast('Backup restored');
 });
 
 load('draft', null) ? workout() : render();
+loadChecks();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 </script>
 </body>
