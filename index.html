@@ -109,6 +109,9 @@
   .cmp { margin-top: 16px; }
   .cmp select { display: block; width: 100%; height: 44px; margin-bottom: 8px; font: inherit; font-weight: 600; text-align: center; text-align-last: center;
                 border: 0; border-radius: 10px; background: var(--card); color: var(--ink); -webkit-appearance: none; }
+  .li .num { flex: none; width: 72px; }
+  .li .unit { width: 32px; margin-left: -4px; }
+  .li .seg { flex: none; width: 168px; }
   .pill.good { background: var(--good-soft); color: var(--good-text); }
 
   /* iOS grouped list */
@@ -156,7 +159,7 @@
   .set { margin: 0 -8px; padding: 4px 8px; border-radius: 12px; transition: background .2s; }
   .set .n { font-size: 13px; color: var(--ink2); text-align: center; }
   .set.done { background: var(--good-soft); }
-  input[type=number] { width: 100%; height: 44px; font: inherit; font-weight: 600; text-align: center; border: 0; border-radius: 10px;
+  input[type=number], input.num { width: 100%; height: 44px; font: inherit; font-weight: 600; text-align: center; border: 0; border-radius: 10px;
                        background: var(--fill); color: var(--ink); -moz-appearance: textfield; }
   input::placeholder { color: var(--ink2); font-weight: 400; opacity: .8; }
   input:focus { outline: 2px solid var(--accent-text); outline-offset: -2px; }
@@ -200,7 +203,7 @@
   .badge { display: grid; place-items: center; width: 96px; height: 96px; margin: 0 auto 24px; border-radius: 50%; background: var(--good); color: #fff;
            box-shadow: 0 0 0 12px var(--good-soft), 0 16px 40px rgba(36,138,61,.3); animation: pop .5s cubic-bezier(.3,1.6,.5,1); }
   .finish h1 { margin-bottom: 4px; }
-  .finish .tiles { margin-top: 32px; text-align: left; }
+  .finish .tiles { margin-top: 32px; text-align: left; grid-template-columns: 1fr 1fr; }
   .finish .group { text-align: left; }
   .finish .li b { font-weight: 600; }
   .cheer { margin-top: 32px; color: var(--ink2); }
@@ -301,6 +304,23 @@ function validLog(data) {
     s.sets && typeof s.sets === 'object' &&
     Object.values(s.sets).every(a => Array.isArray(a) && a.every(p => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite))));
 }
+// Weights accept "42.5" or "42,5" (comma-decimal keyboards): keep digits and the first decimal point.
+function cleanNum(v) {
+  const [a, ...b] = String(v).replace(/,/g, '.').replace(/[^\d.]/g, '').split('.');
+  return b.length ? `${a}.${b.join('')}` : a;
+}
+// Resting burn in kcal/day (Mifflin-St Jeor). me = { sex: 'f' | 'm', age, cm, kg }.
+function bmr(me) {
+  if (!me || !['f', 'm'].includes(me.sex) || ![me.age, me.cm, me.kg].every(x => x > 0)) return null;
+  return 10 * me.kg + 6.25 * me.cm - 5 * me.age + (me.sex === 'm' ? 5 : -161);
+}
+// A lifting session with rests ≈ 3.5 METs (Compendium 02054: multiple exercises, 8–15 reps).
+// One MET is your own resting burn, so the estimate scales with your stats, not an average body.
+const MET = 3.5;
+function kcalBurned(me, mins) {
+  const r = bmr(me);
+  return r && mins > 0 ? Math.round(MET * r / 1440 * mins) : null;
+}
 // LOGIC END
 
 const EX = Object.fromEntries(Object.values(PROGRAM).flatMap(d => d.ex.map(e => [e[0], ex(e)])));
@@ -349,7 +369,7 @@ const LONG = { weekday: 'long', month: 'long', day: 'numeric' };
 const setsList = s => `<ul class="plain">${Object.entries(s.sets).map(([id, sets]) =>
   `<li><span>${esc(EX[id]?.name ?? id)}</span><span class="sub">${fmt(sets, EX[id])}</span></li>`).join('')}</ul>`;
 const sessionCard = (s, i) => `<div class="group">
-  <div class="li">${sw(s.day)}<span class="grow">${PROGRAM[s.day].name}</span><span class="sub">${Object.values(s.sets).flat().length} sets</span></div>
+  <div class="li">${sw(s.day)}<span class="grow">${PROGRAM[s.day].name}</span><span class="sub">${Object.values(s.sets).flat().length} sets${s.kcal ? ` · ~${s.kcal} kcal` : ''}</span></div>
   <div class="body">${setsList(s)}<button class="link danger" onclick="del(${i})">Delete session</button></div></div>`;
 const optionRow = (k, act, tag = '') => `<button class="li opt" onclick="${act}('${k}')">${sw(k)}
   <span class="grow"><span>${PROGRAM[k].name}</span><br><span class="sub">${PROGRAM[k].ex.map(e => e[1]).join(' · ')}</span></span>
@@ -378,7 +398,7 @@ function home() {
     return top + `<section class="card hero" style="--hue:${HUE[s.day]}">
       <span class="pill good">Done today ✓</span>
       <h2>${PROGRAM[s.day].name}</h2>
-      <p class="sub">${Object.values(s.sets).flat().length} sets · ${Math.round(volume(s)).toLocaleString()} kg lifted</p>
+      <p class="sub">${Object.values(s.sets).flat().length} sets · ${Math.round(volume(s)).toLocaleString()} kg lifted${s.kcal ? ` · ~${s.kcal} kcal` : ''}</p>
       ${setsList(s)}
       <button class="link danger" onclick="del(${i})">Delete session</button>
     </section>
@@ -415,9 +435,43 @@ function calendarTab() {
   return `<div class="top"><h1>Calendar</h1></div>${calendar()}${dayPanel()}${weeks()}`;
 }
 
+// Your stats, for the calorie estimate. Stored in metric; shown in whichever units you pick.
+let me = load('me', {}); // { sex: 'f' | 'm', age, cm, kg, imperial }
+const LB = 0.45359237;
+const r1 = x => x > 0 ? String(Math.round(x * 10) / 10) : '';
+const numIn = (k, v, unit) => `<input class="num" type="text" inputmode="decimal" autocomplete="off" data-me="${k}" value="${v}" aria-label="${unit}"><span class="sub unit">${unit}</span>`;
+const bmrNote = () => { const r = bmr(me); return r ? `Your resting burn is about ${Math.round(r).toLocaleString()} kcal a day. Workouts are estimated at ${MET}× that rate for the time you train.`
+  : 'Used to estimate calories burned at the end of each workout. They stay on this phone.'; };
+function statsForm() {
+  const seg = (k, opts) => `<div class="seg">${opts.map(([v, label]) => `<button aria-pressed="${me[k] === v || (k === 'imperial' && !!me[k] === v)}" onclick="setMe('${k}', ${JSON.stringify(v).replace(/"/g, "'")})">${label}</button>`).join('')}</div>`;
+  const inches = me.cm > 0 ? Math.round(me.cm / 2.54) : 0;
+  return `<h3>Your stats</h3>
+    <div class="group">
+      <div class="li"><span class="grow">Units</span>${seg('imperial', [[false, 'kg · cm'], [true, 'lb · ft']])}</div>
+      <div class="li"><span class="grow">Sex</span>${seg('sex', [['f', 'Female'], ['m', 'Male']])}</div>
+      <label class="li"><span class="grow">Age</span>${numIn('age', r1(me.age), 'years')}</label>
+      <label class="li"><span class="grow">Height</span>${me.imperial
+        ? numIn('ft', inches ? Math.floor(inches / 12) : '', 'ft') + numIn('in', inches ? inches % 12 : '', 'in')
+        : numIn('cm', r1(me.cm), 'cm')}</label>
+      <label class="li"><span class="grow">Body weight</span>${numIn('kg', r1(me.imperial ? me.kg / LB : me.kg), me.imperial ? 'lb' : 'kg')}</label>
+    </div>
+    <p class="note" id="bmrNote">${bmrNote()}</p>`;
+}
+function setMe(k, v) { me[k] = v; save('me', me); render(); }
+function meInput(t) {
+  const v = cleanNum(t.value); if (v !== t.value) t.value = v;
+  const n = parseFloat(v) || null, k = t.dataset.me, get = id => parseFloat(app.querySelector(`[data-me="${id}"]`).value) || 0;
+  if (k === 'age' || k === 'cm') me[k] = n;
+  else if (k === 'kg') me.kg = n && (me.imperial ? n * LB : n);
+  else me.cm = (get('ft') * 12 + get('in')) * 2.54 || null;
+  save('me', me);
+  $('bmrNote').textContent = bmrNote();
+}
+
 function settings() {
   return `
     <div class="top"><h1>Settings</h1></div>
+    ${statsForm()}
     <h3>Backup</h3>
     <div class="group">
       <button class="li link" onclick="exportLog()">Export backup</button>
@@ -649,7 +703,7 @@ function card(e, draft) {
       ${Array.from({ length: e.sets }, (_, i) => `
       <div class="set ${done[i] ? 'done' : ''} ${popped === `${e.id}:${i}` ? 'pop' : ''}">
         <span class="n">${i + 1}</span>
-        <input type="number" inputmode="decimal" step="any" min="0" data-ex="${e.id}" data-i="${i}" data-f="0" value="${d[i]?.[0] ?? ''}" placeholder="${ph(i, 0)}" aria-label="Set ${i + 1} kg">
+        <input class="num" type="text" inputmode="decimal" autocomplete="off" data-ex="${e.id}" data-i="${i}" data-f="0" value="${d[i]?.[0] ?? ''}" placeholder="${ph(i, 0)}" aria-label="Set ${i + 1} kg">
         <input type="number" inputmode="numeric" min="0" data-ex="${e.id}" data-i="${i}" data-f="1" value="${d[i]?.[1] ?? ''}" placeholder="${ph(i, 1)}" aria-label="Set ${i + 1} ${e.unit}">
         <button class="tick" onclick="tick('${e.id}', ${i})" aria-pressed="${!!done[i]}" aria-label="Set ${i + 1} done">${ICON.check}</button>
       </div>`).join('')}
@@ -689,7 +743,10 @@ function openEx(id) {
 
 // Save every keystroke to the draft so closing the app mid-workout loses nothing.
 app.addEventListener('input', ev => {
-  const t = ev.target; if (!t.dataset.ex) return;
+  const t = ev.target;
+  if (t.dataset.me) return meInput(t);
+  if (!t.dataset.ex) return;
+  if (t.dataset.f === '0') { const v = cleanNum(t.value); if (v !== t.value) t.value = v; }
   const draft = load('draft', null);
   const sets = draft.sets[t.dataset.ex] ||= [];
   const row = sets[t.dataset.i] ||= ['', ''];
@@ -705,7 +762,7 @@ function tick(id, i) {
   const d = draft.sets[id] ||= [], done = (draft.done ||= {})[id] ||= [];
   if (!done[i]) {
     const vals = [fill(e, d, last, i, 0), fill(e, d, last, i, 1)];
-    const miss = vals.indexOf('');
+    const miss = vals.findIndex(v => v === '' || !Number.isFinite(+v));
     if (miss >= 0) {
       const inp = app.querySelector(`input[data-ex="${id}"][data-i="${i}"][data-f="${miss}"]`);
       inp.classList.add('shake'); setTimeout(() => inp.classList.remove('shake'), 400); inp.focus();
@@ -732,7 +789,7 @@ function logged(e, draft) {
   const d = draft.sets[e.id] || [], last = lastSets(log, e.id), done = draft.done?.[e.id] || [], out = [];
   for (let i = 0; i < e.sets; i++) if (done[i] || (d[i]?.[1] ?? '') !== '') {
     const reps = fill(e, d, last, i, 1);
-    if (reps !== '') out.push([Number(fill(e, d, last, i, 0) || 0), Number(reps)]);
+    if (reps !== '') out.push([+fill(e, d, last, i, 0) || 0, Number(reps)]);
   }
   return out;
 }
@@ -771,11 +828,16 @@ function finish() {
   if (!n) return toast('Tap ✓ on at least one set first');
   const total = PROGRAM[draft.day].ex.reduce((t, e) => t + e[2], 0);
   if (n < total && !confirm(`${total - n} sets aren't done. Finish anyway?`)) return;
+  // Clock time if it looks real (app left open overnight doesn't), else sets × (rest + ~40s of work).
+  const mins = draft.started && Math.round((Date.now() - draft.started) / 60000);
+  const est = Object.entries(session.sets).reduce((t, [id, s]) => t + s.length * (EX[id].rest + 40), 0) / 60;
+  const kcal = kcalBurned(me, mins > 0 && mins < 300 ? mins : est);
+  if (kcal) session.kcal = kcal;
   const prs = newPRs(log, session);
   log.push(session); save('log', log); localStorage.removeItem('draft');
   delete plan[session.date]; save('plan', plan); sel = today(); month = sel.slice(0, 7);
   skipRest(); open = null;
-  summary(session, prs, draft.started && Math.round((Date.now() - draft.started) / 60000));
+  summary(session, prs, mins);
 }
 
 // The end of the workout is the moment to remember: celebrate it, then point to what's next.
@@ -789,7 +851,9 @@ function summary(s, prs, mins) {
       <div class="tile"><b>${Object.values(s.sets).flat().length}</b><span>Sets</span></div>
       <div class="tile"><b>${Math.round(volume(s)).toLocaleString()}</b><span>kg lifted</span></div>
       ${mins > 0 && mins < 300 ? `<div class="tile"><b>${mins}</b><span>Minutes</span></div>` : ''}
+      ${s.kcal ? `<div class="tile"><b>${s.kcal}</b><span>kcal burned (est.)</span></div>` : ''}
     </div>
+    ${s.kcal ? '' : `<p class="note">Add your stats in Settings to see calories burned.</p>`}
     ${prs.length ? `<h3>New personal bests</h3><div class="group">${prs.map(([id, b]) =>
       `<div class="li"><span>🏆</span><span class="grow">${EX[id].name}</span><b>${fmtSet(b, EX[id])}</b></div>`).join('')}</div>` : ''}
     <p class="cheer">${prs.length ? 'You got stronger today.' : 'You showed up. That\'s what builds results.'}<br>
@@ -810,7 +874,7 @@ function del(i) {
 
 async function exportLog() {
   const photos = await Promise.all(checks.map(async c => ({ date: c.date, front: await toDataURL(c.front), side: await toDataURL(c.side) })));
-  const file = new File([JSON.stringify({ log, plan, photos })], `recomp-backup-${today()}.json`, { type: 'application/json' });
+  const file = new File([JSON.stringify({ log, plan, photos, me })], `recomp-backup-${today()}.json`, { type: 'application/json' });
   if (navigator.canShare?.({ files: [file] })) return navigator.share({ files: [file] }).catch(() => {});
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(file), download: file.name });
   a.click();
@@ -829,6 +893,7 @@ importFile.addEventListener('change', async () => {
   if (!confirm(`Replace your ${what(log.length, checks.length)} with ${what(newLog.length, photos?.length)} from the backup?`)) return;
   log = newLog; save('log', log);
   if (data.plan && typeof data.plan === 'object') { plan = Object.fromEntries(Object.entries(data.plan).filter(([, k]) => Object.hasOwn(PROGRAM, k))); save('plan', plan); }
+  if (data.me && typeof data.me === 'object') { me = data.me; save('me', me); }
   if (photos) {
     const blob = u => u && fetch(u).then(r => r.blob());
     const recs = await Promise.all(photos.map(async p => ({ date: p.date, front: await blob(p.front), side: await blob(p.side) })));
