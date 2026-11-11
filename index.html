@@ -295,11 +295,14 @@ function advice(e, last) {
   if (!last) return e.unit === 'sec'
     ? `First time: hold as long as you can with good form, up to ${e.hi}s.`
     : `First time: pick a weight you could lift for ${e.hi + 2} reps, do ${e.hi}.`;
+  const goal = target(e, last), kgs = [...new Set(goal.map(([kg]) => kg))];
+  const at = kgs.length === 1 ? `${kgs[0]} kg` : `${goal.map(([kg]) => kg).join(' / ')} kg (set by set)`;
   if (maxedOut(e, last))
     return !bumpable(e, last)
       ? `You maxed it out last time. Add weight or slow it down.`
-      : `You hit ${e.hi} on every set. Go up to ${target(e, last)[0][0]} kg today and aim for ${e.lo}+.`;
-  return `Same weight as last time, try to get at least 1 more rep.`;
+      : `You hit ${e.hi} on every set. Go up to ${at} today and aim for ${e.lo}+.`;
+  if (!bumpable(e, last)) return `Same as last time, try to get at least 1 more ${e.unit === 'sec' ? 'second' : 'rep'} on each set.`;
+  return `Stay at ${at}, same as last time, and try to get at least 1 more rep on each set.`;
 }
 function nextDay(log) {
   const days = Object.keys(PROGRAM);
@@ -691,13 +694,15 @@ function start(day) {
   scrollTo(0, 0);
 }
 
-// What a set logs if left as-is: typed value, else (kg) this workout's previous set, else today's target.
+// What a set logs if left as-is: typed value, else (kg) the nearest weight typed above it, else today's target.
 function fill(e, d, last, i, f) {
   const t = d[i]?.[f];
   if (t != null && t !== '') return t;
   const goal = target(e, last);
   if (f === 1) return goal?.[i]?.[1] ?? '';
-  return i > 0 ? fill(e, d, last, i - 1, 0) : goal?.[0]?.[0] ?? (e.unit === 'sec' ? 0 : '');
+  // A weight typed on an earlier set this workout carries down; otherwise each set gets its own target.
+  for (let j = i - 1; j >= 0; j--) if (d[j]?.[0] != null && d[j][0] !== '') return d[j][0];
+  return goal?.[i]?.[0] ?? (e.unit === 'sec' ? 0 : '');
 }
 const doneCount = (draft, e) => Math.min(e.sets, (draft.done?.[e.id] || []).filter(Boolean).length);
 
