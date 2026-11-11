@@ -277,15 +277,32 @@ function bestSet(log, id) {
   return best;
 }
 // Double progression: hit the top of the rep range on every set → add weight.
+const STEP = 2.5; // one weight step, kg
+const maxedOut = (e, last) => last.length >= e.sets && last.every(([, r]) => r >= e.hi);
+const bumpable = (e, last) => e.unit !== 'sec' && last[0][0] !== 0;
+const round = n => Math.round(n * 100) / 100;
+// What to aim for today, set by set, following the advice: [[kg, reps], ...] or null the first time.
+function target(e, last) {
+  if (!last?.length) return null;
+  const up = maxedOut(e, last);
+  return Array.from({ length: e.sets }, (_, i) => {
+    const [kg, reps] = last[i] ?? last[last.length - 1];
+    if (!up) return [kg, Math.min(e.hi, reps + 1)];
+    return bumpable(e, last) ? [round(kg + STEP), e.lo] : [kg, e.hi];
+  });
+}
 function advice(e, last) {
   if (!last) return e.unit === 'sec'
     ? `First time: hold as long as you can with good form, up to ${e.hi}s.`
     : `First time: pick a weight you could lift for ${e.hi + 2} reps, do ${e.hi}.`;
-  if (last.length >= e.sets && last.every(([, r]) => r >= e.hi))
-    return e.unit === 'sec' || last[0][0] === 0
+  const goal = target(e, last), kgs = [...new Set(goal.map(([kg]) => kg))];
+  const at = kgs.length === 1 ? `${kgs[0]} kg` : `${goal.map(([kg]) => kg).join(' / ')} kg (set by set)`;
+  if (maxedOut(e, last))
+    return !bumpable(e, last)
       ? `You maxed it out last time. Add weight or slow it down.`
-      : `You hit ${e.hi} on every set. Go up one weight step today and aim for ${e.lo}+.`;
-  return `Same weight as last time, try to get at least 1 more rep.`;
+      : `You hit ${e.hi} on every set. Go up to ${at} today and aim for ${e.lo}+.`;
+  if (!bumpable(e, last)) return `Same as last time, try to get at least 1 more ${e.unit === 'sec' ? 'second' : 'rep'} on each set.`;
+  return `Stay at ${at}, same as last time, and try to get at least 1 more rep on each set.`;
 }
 function nextDay(log) {
   const days = Object.keys(PROGRAM);
@@ -484,7 +501,7 @@ function settings() {
         <li>Every workout is full body, so glutes, legs, shoulders and core each get trained 3× a week. For a beginner that's the fastest way to build muscle while losing fat.</li>
         <li>Lift 3 days a week with at least one rest day in between. Home suggests the next workout in the rotation, or the one you planned.</li>
         <li>End each set with 1–2 reps left in the tank. Form first.</li>
-        <li><b>Progressive overload:</b> once you hit the top of the rep range on every set, go up one weight step. Until then, keep the weight and add reps.</li>
+        <li><b>Progressive overload:</b> once you hit the top of the rep range on every set, go up one weight step (2.5 kg). Until then, keep the weight and add reps.</li>
         <li>Recomp happens in the kitchen too: eat roughly 0.8–1 g of protein per lb of body weight (~100–125 g a day for you) at about maintenance calories.</li>
         <li>Each set is pre-filled with last time's numbers. Tap ✓ to log them as-is, or type over them first.</li>
       </ul>
@@ -677,12 +694,15 @@ function start(day) {
   scrollTo(0, 0);
 }
 
-// What a set logs if left as-is: typed value, else (kg) this workout's previous set, else last session.
+// What a set logs if left as-is: typed value, else (kg) the nearest weight typed above it, else today's target.
 function fill(e, d, last, i, f) {
   const t = d[i]?.[f];
   if (t != null && t !== '') return t;
-  if (f === 1) return last?.[i]?.[1] ?? last?.[0]?.[1] ?? '';
-  return i > 0 ? fill(e, d, last, i - 1, 0) : last?.[0]?.[0] ?? (e.unit === 'sec' ? 0 : '');
+  const goal = target(e, last);
+  if (f === 1) return goal?.[i]?.[1] ?? '';
+  // A weight typed on an earlier set this workout carries down; otherwise each set gets its own target.
+  for (let j = i - 1; j >= 0; j--) if (d[j]?.[0] != null && d[j][0] !== '') return d[j][0];
+  return goal?.[i]?.[0] ?? (e.unit === 'sec' ? 0 : '');
 }
 const doneCount = (draft, e) => Math.min(e.sets, (draft.done?.[e.id] || []).filter(Boolean).length);
 
